@@ -20,7 +20,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 import requests
 from bs4 import BeautifulSoup
 
-from scraper.parse import (classify, is_shipping_included, normalize, parse_prefecture, parse_variety,
+from scraper.parse import (NOT_STRAWBERRY, classify, is_shipping_included, normalize, parse_prefecture, parse_variety,
                            parse_weight)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -189,16 +189,20 @@ def main():
             break
         if dump_dir and page == 1:
             _dump(dump_dir, "list_page1.html", html)
-        new = 0
+        new = skipped = 0
         for row in parse_list_page(html, cfg):
             if row["product_id"] in seen:
                 continue
             seen.add(row["product_id"])
-            row["date"] = today
-            row["rank"] = len(rows) + 1
-            rows.append(row)
             new += 1
-        print(f"page {page}: +{new} products (total {len(rows)})")
+            # 掲載順は検索結果での位置なので、除外した商品も数える
+            row["rank"] = len(seen)
+            if row["kind"] == NOT_STRAWBERRY:
+                skipped += 1
+                continue
+            row["date"] = today
+            rows.append(row)
+        print(f"page {page}: +{new - skipped} products, いちご以外 {skipped} 件除外 (total {len(rows)})")
         if new == 0:
             break
 

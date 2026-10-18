@@ -12,7 +12,7 @@ import os
 import statistics
 from datetime import date, datetime, timedelta, timezone
 
-from scraper.parse import classify
+from scraper.parse import NOT_STRAWBERRY, classify
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 JST = timezone(timedelta(hours=9))
@@ -46,9 +46,12 @@ def load_snapshots(snap_dir):
         with open(path, encoding="utf-8-sig") as f:
             rows = {}
             for r in csv.DictReader(f):
+                kind = r.get("kind") or classify(r["title"])
+                if kind == NOT_STRAWBERRY:
+                    continue
                 rows[r["product_id"]] = {
                     "title": r["title"],
-                    "kind": r.get("kind") or classify(r["title"]),
+                    "kind": kind,
                     "url": r["url"],
                     "producer": r["producer"],
                     "prefecture": r["prefecture"],

@@ -19,7 +19,9 @@ VARIETIES = sorted([
     "恋みのり", "よつぼし", "淡雪", "天使の実", "桃薫", "古都華", "まりひめ", "ゆうべに",
     "さくらももいちご", "あきひめ", "女峰", "ほしうらら", "雪うさぎ", "初恋の香り",
     "真紅の美鈴", "さちのか", "紅き夢", "きらぴ香", "おおきみ", "ゆうぼうし", "かおりん",
-    "ひのしずく", "サマープリンセス", "すずあかね", "なつあかり", "夏秋いちご", "さぬき姫", "美人姫", "白いちご", "冬のきらめき", "星の煌めき",
+    "ひのしずく", "サマープリンセス", "あまりん", "べにたま", "越後姫", "あすかルビー", "あまおとめ",
+    "みくのか", "恋ひめ", "マロンベリー", "スターナイト", "チーバベリー", "うずしおベリー", "ゆめのか",
+    "かおりん", "おおきみ", "ふちのか", "よつぼし", "華かがり", "まりこ", "ももいちご", "すずあかね", "なつあかり", "夏秋いちご", "さぬき姫", "美人姫", "白いちご", "冬のきらめき", "星の煌めき",
 ], key=len, reverse=True)
 
 _NUM = r"(\d+(?:\.\d+)?)"
@@ -112,7 +114,10 @@ def is_shipping_included(text):
     return bool(re.search(r"送料(込|無料|当方負担)", t))
 
 
-_STRAWBERRY_RE = re.compile(r"いちご|イチゴ|苺|ストロベリー|strawberry", re.I)
+NOT_STRAWBERRY = "いちご以外"
+_STRAWBERRY_RE = re.compile(r"いちご|イチゴ|苺|ストロベリー|strawberry|🍓", re.I)
+# 「◯◯ベリー」はいちごのブランド名に多いが、他のベリー類は除く
+_BERRY_RE = re.compile(r"(?<!ブルー)(?<!ラズ)(?<!ブラック)(?<!クラン)(?<!ハスカップ)ベリー")
 _PROCESSED_RE = re.compile(
     r"ジャム|ドライ|甘酒|ケーキ|みるく|ミルク|ジュース|ソース|大福|アイス|シロップ|スムージー|ピューレ|"
     r"コンフィチュール|ゼリー|プリン|タルト|パフェ|菓子|スイーツ|酢|ワイン|サイダー|ジェラート|"
@@ -122,8 +127,8 @@ _PROCESSED_RE = re.compile(
 def classify(title):
     """商品名から種類を判定する: 生果 / 冷凍 / 加工品 / いちご以外"""
     t = normalize(title)
-    if not _STRAWBERRY_RE.search(t) and not parse_variety(t):
-        return "いちご以外"
+    if not _STRAWBERRY_RE.search(t) and not parse_variety(t) and not _BERRY_RE.search(t):
+        return NOT_STRAWBERRY
     if _PROCESSED_RE.search(t):
         return "加工品"
     if "冷凍" in t:

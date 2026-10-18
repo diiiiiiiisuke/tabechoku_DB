@@ -47,6 +47,10 @@ class ParseMiscTest(unittest.TestCase):
         self.assertEqual(classify("急速冷凍いちご 1kg"), "冷凍")
         self.assertEqual(classify("いちごの無添加ドライフルーツ 10g×5包"), "加工品")
         self.assertEqual(classify("超巨大粒 天狼 種なし 1房450g"), "いちご以外")
+        self.assertEqual(classify("和歌山県産 甘夏みかん 家庭用 10kg"), "いちご以外")
+        self.assertEqual(classify("ブルーベリー 500g"), "いちご以外")
+        self.assertEqual(classify("【千葉県限定生産】チーバベリー 400g×1トレー"), "生果")
+        self.assertEqual(classify("【希少あまりん】小粒たっぷり1Kg"), "生果")
 
     def test_shipping(self):
         self.assertTrue(is_shipping_included("【送料込】あまおう"))
