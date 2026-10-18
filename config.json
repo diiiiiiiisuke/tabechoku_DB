@@ -8,5 +8,7 @@
   "default_berry_grams": 20,
   "own_product_ids": [],
   "focus_prefecture": "大分県",
-  "price_band_width": 500
+  "price_band_width": 500,
+  "cliff_drop_ratio": 0.4,
+  "comparable_weight_ratio": 2
 }

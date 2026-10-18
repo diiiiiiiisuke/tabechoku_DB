@@ -30,7 +30,7 @@
   // ---------- 初期化 ----------
   $("#meta").textContent = `データ日付 ${D.latest_date}（日次更新）・生成 ${D.generated_at.replace("T", " ")}`;
   $("#demo-banner").hidden = !D.is_demo;
-  $("#m-rate").textContent = `${Math.round(D.config.review_rate * 100)}%`;
+  $("#manual").innerHTML = D.manual_html || "";
 
   const uniq = (k) => [...new Set(D.products.map((p) => p[k]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ja"));
   for (const [sel, key] of [["#f-variety", "variety"], ["#f-pref", "prefecture"]]) {
@@ -192,8 +192,9 @@
     let comparable = pool;
     let scope = "絞り込み条件に合う全商品";
     if (weight) {
-      const near = pool.filter((p) => p.weight && p.weight >= weight / 2 && p.weight <= weight * 2);
-      if (near.length >= 12) { comparable = near; scope = `内容量 ${num(weight / 2)}g〜${num(weight * 2)}g の商品`; }
+      const k = D.config.comparable_weight_ratio || 2;
+      const near = pool.filter((p) => p.weight && p.weight >= weight / k && p.weight <= weight * k);
+      if (near.length >= 12) { comparable = near; scope = `内容量 ${num(weight / k)}g〜${num(weight * k)}g の商品`; }
     }
     if (comparable.length < 5) return { error: `比較できる商品が ${comparable.length} 件しかありません。絞り込み条件を緩めてください。` };
 
@@ -216,7 +217,7 @@
     let peak = 0, cliff = null;
     for (const band of bands) {
       if (band.n < minN || band.pace == null) continue;
-      if (peak > 0 && band.pace < peak * 0.6) { cliff = band; break; }
+      if (peak > 0 && band.pace < peak * (1 - (D.config.cliff_drop_ratio ?? 0.4))) { cliff = band; break; }
       peak = Math.max(peak, band.pace);
     }
     const eligible = bands.filter((b) => b.n >= minN && (!cliff || b.lo < cliff.lo));

@@ -9,8 +9,11 @@ import csv
 import glob
 import json
 import os
+import re
 import statistics
 from datetime import date, datetime, timedelta, timezone
+
+import markdown
 
 from scraper.parse import NOT_STRAWBERRY, classify
 
@@ -23,6 +26,53 @@ PPK_RANGE = (300, 30000)
 def load_config():
     with open(os.path.join(ROOT, "config.json"), encoding="utf-8") as f:
         return json.load(f)
+
+
+def schedule_jst():
+    """daily.yml の cron（UTC）を日本時間の「H:MM」に変換する。"""
+    path = os.path.join(ROOT, ".github", "workflows", "daily.yml")
+    try:
+        with open(path, encoding="utf-8") as f:
+            m = re.search(r'cron:\s*"(\d+)\s+(\d+)\s', f.read())
+    except OSError:
+        m = None
+    if not m:
+        return "（未設定）"
+    minute, hour = int(m.group(1)), int(m.group(2))
+    return f"{(hour + 9) % 24}:{minute:02d}"
+
+
+def render_manual(cfg):
+    """docs/manual.md の {{キー}} を現在の設定値で置き換えてHTMLにする。"""
+    with open(os.path.join(ROOT, "docs", "manual.md"), encoding="utf-8") as f:
+        text = f.read()
+    values = {
+        "schedule_jst": schedule_jst(),
+        "search_url": cfg["search_url"],
+        "max_pages": cfg["max_pages"],
+        "max_products": cfg["max_pages"] * 48,
+        "request_interval_sec": cfg["request_interval_sec"],
+        "review_rate": cfg["review_rate"],
+        "review_rate_pct": round(cfg["review_rate"] * 100),
+        "default_pack_grams": cfg["default_pack_grams"],
+        "default_berry_grams": cfg["default_berry_grams"],
+        "price_band_width": cfg["price_band_width"],
+        "cliff_drop_ratio": cfg["cliff_drop_ratio"],
+        "cliff_drop_pct": round(cfg["cliff_drop_ratio"] * 100),
+        "weight_ratio": cfg["comparable_weight_ratio"],
+        "own_product_ids": ", ".join(cfg.get("own_product_ids", [])) or "（未設定）",
+        "ppk_min": f"{PPK_RANGE[0]:,}",
+        "ppk_max": f"{PPK_RANGE[1]:,}",
+    }
+
+    def sub(m):
+        key = m.group(1)
+        if key not in values:
+            raise KeyError(f"manual.md の未定義キー: {key}")
+        return str(values[key])
+
+    text = re.sub(r"\{\{\s*(\w+)\s*\}\}", sub, text)
+    return markdown.markdown(text, extensions=["tables"])
 
 
 def _num(v, cast=float):
@@ -228,12 +278,15 @@ def build(days, cfg, is_demo):
         "config": {
             "review_rate": review_rate,
             "price_band_width": cfg["price_band_width"],
+            "cliff_drop_ratio": cfg["cliff_drop_ratio"],
+            "comparable_weight_ratio": cfg["comparable_weight_ratio"],
             "focus_prefecture": cfg.get("focus_prefecture", ""),
             "search_url": cfg["search_url"],
         },
         "daily": daily,
         "products": products,
         "price_events": events[:300],
+        "manual_html": render_manual(cfg),
     }
 
 

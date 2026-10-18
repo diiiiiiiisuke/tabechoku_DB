@@ -11,7 +11,7 @@
 <header class="top">
   <div>
     <h1>いちご市場ダッシュボード <span class="sub">食べチョク</span></h1>
-    <p class="meta" id="meta"></p>
+    <p class="meta"><span id="meta"></span> ・ <a href="#manual-section">運用マニュアル・計算ロジック</a></p>
   </div>
 </header>
 <div id="demo-banner" class="banner" hidden>
@@ -148,15 +148,8 @@
     </div>
   </section>
 
-  <section class="card method">
-    <h2>数値の見方・注意点</h2>
-    <ul>
-      <li><strong>推定販売数</strong>：食べチョクは販売数を公開していないため、「在庫数（残りN個）の減少」が取れる商品はその値を、取れない商品は「レビュー件数の増加 ÷ レビュー投稿率」（現在の設定 <span id="m-rate"></span>）で推定しています。絶対値よりも、商品間・期間間の<strong>相対比較</strong>に使ってください。</li>
-      <li><strong>1kgあたり価格</strong>：商品名・内容量欄から重量を読み取って計算しています。「◯パック」「◯粒」のみの表記は1パック・1粒の標準重量で推計しており、表では「推計」と表示されます。</li>
-      <li><strong>掲載順</strong>：食べチョクの「いちご」検索結果（おすすめ順）での順位です。上位ほど露出が多く、人気の目安になります。</li>
-      <li><strong>送料</strong>：「送料込」の商品は1kgあたり価格が高めに出ます。送料別の商品と比べる場合は「送料」で絞り込んでください。</li>
-      <li><strong>レコメンド</strong>：類似商品の価格帯ごとの平均販売ペース×価格が最大になる帯を推奨し、販売ペースが手前の帯のピークから40%以上落ちる帯を「急落ライン」としています。商品数が少ない期間は参考程度にしてください。</li>
-    </ul>
+  <section class="card manual" id="manual-section">
+    <div id="manual"></div>
   </section>
 </main>
 
