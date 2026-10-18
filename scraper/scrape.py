@@ -239,6 +239,7 @@ def main():
     ap.add_argument("--out-dir", default=os.path.join(ROOT, "data", "snapshots"))
     ap.add_argument("--limit", type=int, default=0, help="取得する商品数の上限（動作確認用）")
     ap.add_argument("--debug-dump", action="store_true")
+    ap.add_argument("--max-minutes", type=float, default=0, help="この時間を超えたら取得を打ち切って保存する")
     args = ap.parse_args()
 
     cfg = load_config()
@@ -246,11 +247,15 @@ def main():
     dump_dir = os.path.join(ROOT, "data", "debug") if args.debug_dump else None
     today = datetime.now(JST).strftime("%Y-%m-%d")
 
+    started = time.time()
     ids = collect_product_ids(fetcher, cfg, dump_dir)
     if args.limit:
         ids = ids[:args.limit]
     rows = []
     for i, pid in enumerate(ids):
+        if args.max_minutes and time.time() - started > args.max_minutes * 60:
+            print(f"時間上限に達したため {i}/{len(ids)} 件で打ち切ります", file=sys.stderr)
+            break
         html = fetcher.get(f"{BASE}/products/{pid}")
         if not html:
             continue

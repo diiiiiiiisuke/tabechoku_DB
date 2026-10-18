@@ -15,7 +15,7 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       # 定期実行はデフォルトブランチ上で起動するが、データは常に main に蓄積する
       - uses: actions/checkout@v4
@@ -32,7 +32,7 @@ jobs:
         run: python -m unittest discover -s tests -t .
 
       - name: Scrape tabechoku
-        run: python -m scraper.scrape --debug-dump
+        run: python -m scraper.scrape --debug-dump --max-minutes 90
 
       - name: Build dashboard data
         run: python -m scraper.build
