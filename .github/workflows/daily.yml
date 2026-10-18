@@ -5,8 +5,8 @@ on:
     - cron: "47 20 * * *" # 毎日 05:47 JST
   workflow_dispatch:
     inputs:
-      limit:
-        description: "取得する商品数の上限（0=全件。動作確認用）"
+      max_pages:
+        description: "取得ページ数の上限（0=全ページ。動作確認用）"
         default: "0"
 
 permissions:
@@ -22,7 +22,7 @@ env:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 30
     steps:
       # 定期実行はデフォルトブランチ上で起動するが、データは常に main に蓄積する
       - uses: actions/checkout@v4
@@ -39,7 +39,7 @@ jobs:
         run: python -m unittest discover -s tests -t .
 
       - name: Scrape tabechoku
-        run: python -m scraper.scrape --debug-dump --max-minutes 90 --limit ${{ inputs.limit || 0 }}
+        run: python -m scraper.scrape --debug-dump --max-pages ${{ inputs.max_pages || 0 }}
 
       - name: Build dashboard data
         run: python -m scraper.build

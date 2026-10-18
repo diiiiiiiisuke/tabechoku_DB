@@ -24,7 +24,7 @@
     return d.toISOString().slice(0, 10);
   };
 
-  const state = { sort: { k: "sales7", asc: false }, selected: null };
+  const state = { sort: { k: "rank", asc: true }, selected: null };
   const charts = {};
 
   // ---------- 初期化 ----------
@@ -344,12 +344,14 @@
       th.classList.toggle("asc", th.dataset.k === k && asc);
     });
     $("#p-table tbody").innerHTML = tableRows.map((p) => {
-      const status = !p.active ? `<span class="tag">掲載終了</span>` : p.sold_out ? `<span class="tag out">売り切れ</span>` : p.stock != null ? `<span class="tag">残り${p.stock}</span>` : `<span class="tag">販売中</span>`;
+      const status = !p.active ? `<span class="tag">掲載終了</span>` : p.sold_out ? `<span class="tag out">売り切れ</span>` : p.stock != null ? `<span class="tag">残り${p.stock}</span>` : /reservation/.test(p.status_label || "") ? `<span class="tag">予約受付</span>` : `<span class="tag">販売中</span>`;
       const chg = p.pchg == null || p.pchg === 0 ? "–" : `<span class="${p.pchg > 0 ? "up" : "down"}">${pctTxt(p.pchg)}</span>`;
       return `<tr data-id="${esc(p.id)}" class="${p.own ? "own" : ""} ${state.selected === p.id ? "selected" : ""}">
         <td class="title"><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title)}</a>${p.ship ? ' <span class="tag">送料込</span>' : ""}</td>
         <td>${esc(p.producer)}</td><td>${esc(p.prefecture)}</td><td>${esc(p.variety) || "–"}</td>
+        <td class="num">${num(p.rank)}</td>
         <td class="num">${yen(p.price)}</td>
+        <td class="num">${p.ship && !p.fee ? "込" : yen(p.fee)}</td>
         <td class="num">${p.weight ? num(p.weight) + "g" : "–"}${p.west ? ' <span class="est">推計</span>' : ""}</td>
         <td class="num">${yen(p.ppk)}</td><td class="num">${chg}</td>
         <td class="num">${num(p.sales7, 2)}</td><td class="num">${num(p.sales30, 2)}</td>
@@ -407,7 +409,7 @@
 
   // ---------- CSV ----------
   function downloadCsv() {
-    const cols = [["id", "商品ID"], ["title", "商品名"], ["producer", "生産者"], ["prefecture", "産地"], ["variety", "品種"], ["price", "価格"], ["ship", "送料込"], ["weight", "内容量g"], ["ppk", "円/kg"], ["price_7d", "7日前価格"], ["sales7", "販売/日(7日)"], ["sales14", "販売/日(14日)"], ["sales30", "販売/日(30日)"], ["reviews", "レビュー数"], ["rating", "評価"], ["sold_out", "売り切れ"], ["url", "URL"]];
+    const cols = [["id", "商品ID"], ["title", "商品名"], ["producer", "生産者"], ["prefecture", "産地"], ["variety", "品種"], ["rank", "掲載順"], ["price", "価格"], ["fee", "送料"], ["ship", "送料込"], ["weight", "内容量g"], ["ppk", "円/kg"], ["price_7d", "7日前価格"], ["sales7", "販売/日(7日)"], ["sales14", "販売/日(14日)"], ["sales30", "販売/日(30日)"], ["reviews", "レビュー数"], ["rating", "評価"], ["sold_out", "売り切れ"], ["url", "URL"]];
     const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const body = [cols.map((c) => q(c[1])).join(",")].concat(tableRows.map((p) => cols.map((c) => q(p[c[0]])).join(","))).join("\r\n");
     const a = document.createElement("a");
