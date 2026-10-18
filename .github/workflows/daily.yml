@@ -12,6 +12,9 @@ concurrency:
   group: daily-scrape
   cancel-in-progress: false
 
+env:
+  PYTHONUNBUFFERED: "1"
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
