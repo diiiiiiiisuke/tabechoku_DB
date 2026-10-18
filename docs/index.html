@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>いちご市場ダッシュボード</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>いちご市場ダッシュボード <span class="sub">食べチョク</span></h1>
+    <p class="meta" id="meta"></p>
+  </div>
+</header>
+<div id="demo-banner" class="banner" hidden>
+  ⚠ 現在表示しているのは<strong>デモデータ</strong>です（実在の商品ではありません）。GitHub Actions で日次取得が始まると実データに切り替わります。
+</div>
+
+<main>
+  <section class="filters" aria-label="絞り込み">
+    <label>期間
+      <select id="f-range">
+        <option value="30">直近30日</option>
+        <option value="90" selected>直近90日</option>
+        <option value="180">直近180日</option>
+        <option value="0">全期間</option>
+      </select>
+    </label>
+    <label>品種 <select id="f-variety"><option value="">すべて</option></select></label>
+    <label>都道府県 <select id="f-pref"><option value="">すべて</option></select></label>
+    <label>送料
+      <select id="f-ship">
+        <option value="">すべて</option>
+        <option value="1">送料込</option>
+        <option value="0">送料別</option>
+      </select>
+    </label>
+    <label>内容量
+      <select id="f-weight">
+        <option value="">すべて</option>
+        <option value="0-600">〜600g</option>
+        <option value="600-1100">600g〜1.1kg</option>
+        <option value="1100-99999">1.1kg〜</option>
+      </select>
+    </label>
+    <label class="grow">キーワード <input id="f-q" type="search" placeholder="商品名・生産者名"></label>
+  </section>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid2">
+    <figure class="card">
+      <figcaption><h2>1kgあたり価格の推移</h2><p>販売中商品の中央値と、中央50%（25〜75パーセンタイル）の幅</p></figcaption>
+      <div class="chart"><canvas id="c-ppk"></canvas></div>
+    </figure>
+    <figure class="card">
+      <figcaption><h2>推定販売数の推移（1日あたり・合計）</h2><p>棒＝日次、線＝7日移動平均</p></figcaption>
+      <div class="chart"><canvas id="c-sales"></canvas></div>
+    </figure>
+  </section>
+
+  <section class="card reco" id="reco-card">
+    <h2>価格レコメンド</h2>
+    <p class="note">販売中の類似商品（内容量が近いもの）の直近14日の「1kgあたり価格」と「推定販売ペース」から、売上（価格×販売数）が最大になりやすい価格帯と、売れ行きが急に落ちる価格ラインを算出します。上の絞り込み（品種・送料など）も反映されます。</p>
+    <div class="reco-inputs">
+      <label>内容量 (g) <input id="r-weight" type="number" min="50" step="10" value="1000"></label>
+      <label>現在の価格（円・任意） <input id="r-price" type="number" min="0" step="10" placeholder="例: 4980"></label>
+    </div>
+    <div class="reco-out" id="reco-out"></div>
+  </section>
+
+  <section class="grid2">
+    <figure class="card">
+      <figcaption><h2>価格帯別の販売ペース</h2><p>1kgあたり価格帯ごとの、1商品あたり平均推定販売数/日（直近14日）</p></figcaption>
+      <div class="chart"><canvas id="c-band"></canvas></div>
+    </figure>
+    <figure class="card">
+      <figcaption><h2>価格と販売ペースの分布</h2><p>1点＝1商品。横軸 1kgあたり価格、縦軸 推定販売数/日（直近14日）</p></figcaption>
+      <div class="chart"><canvas id="c-scatter"></canvas></div>
+    </figure>
+  </section>
+
+  <section class="card" id="detail-card" hidden>
+    <div class="detail-head">
+      <h2 id="detail-title"></h2>
+      <button type="button" id="detail-close" class="btn">閉じる</button>
+    </div>
+    <p class="meta" id="detail-meta"></p>
+    <div class="grid2">
+      <div><h3>価格（円）</h3><div class="chart small"><canvas id="c-d-price"></canvas></div></div>
+      <div><h3>推定販売数/日（7日移動平均）</h3><div class="chart small"><canvas id="c-d-sales"></canvas></div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="table-head">
+      <h2>商品一覧 <span class="count" id="p-count"></span></h2>
+      <div class="table-actions">
+        <label class="inline"><input type="checkbox" id="f-active" checked> 掲載中のみ</label>
+        <button type="button" class="btn" id="csv">CSVダウンロード</button>
+      </div>
+    </div>
+    <p class="note">行をクリックすると、その商品の価格と販売ペースの推移を表示します。列見出しで並び替えできます。</p>
+    <div class="table-wrap">
+      <table id="p-table">
+        <thead><tr>
+          <th data-k="title">商品名</th>
+          <th data-k="producer">生産者</th>
+          <th data-k="prefecture">産地</th>
+          <th data-k="variety">品種</th>
+          <th data-k="price" class="num">価格</th>
+          <th data-k="weight" class="num">内容量</th>
+          <th data-k="ppk" class="num">円/kg</th>
+          <th data-k="pchg" class="num">7日前比</th>
+          <th data-k="sales7" class="num">販売/日<br><small>7日</small></th>
+          <th data-k="sales30" class="num">販売/日<br><small>30日</small></th>
+          <th data-k="reviews" class="num">レビュー</th>
+          <th data-k="status">状態</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>価格改定と販売ペースの変化</h2>
+    <p class="note">価格を変えた商品の、変更前7日と変更後7日の推定販売数/日。値下げ・値上げでどれだけ売れ行きが変わったかの目安になります。</p>
+    <div class="table-wrap">
+      <table id="e-table">
+        <thead><tr>
+          <th>日付</th><th>商品名</th><th class="num">変更前</th><th class="num">変更後</th>
+          <th class="num">価格変化</th><th class="num">販売/日 前</th><th class="num">販売/日 後</th><th class="num">販売変化</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card method">
+    <h2>数値の見方・注意点</h2>
+    <ul>
+      <li><strong>推定販売数</strong>：食べチョクは販売数を公開していないため、「在庫数（残りN個）の減少」が取れる商品はその値を、取れない商品は「レビュー件数の増加 ÷ レビュー投稿率」（現在の設定 <span id="m-rate"></span>）で推定しています。絶対値よりも、商品間・期間間の<strong>相対比較</strong>に使ってください。</li>
+      <li><strong>1kgあたり価格</strong>：商品名・内容量欄から重量を読み取って計算しています。「◯パック」「◯粒」のみの表記は1パック・1粒の標準重量で推計しており、表では「推計」と表示されます。</li>
+      <li><strong>送料</strong>：「送料込」の商品は1kgあたり価格が高めに出ます。送料別の商品と比べる場合は「送料」で絞り込んでください。</li>
+      <li><strong>レコメンド</strong>：類似商品の価格帯ごとの平均販売ペース×価格が最大になる帯を推奨し、販売ペースが手前の帯のピークから40%以上落ちる帯を「急落ライン」としています。商品数が少ない期間は参考程度にしてください。</li>
+    </ul>
+  </section>
+</main>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

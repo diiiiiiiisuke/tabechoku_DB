@@ -1,0 +1,52 @@
+name: daily-scrape
+
+on:
+  schedule:
+    - cron: "47 20 * * *" # 毎日 05:47 JST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - name: Test parsers
+        run: python -m unittest discover -s tests -t .
+
+      - name: Scrape tabechoku
+        run: python -m scraper.scrape --debug-dump
+
+      - name: Build dashboard data
+        run: python -m scraper.build
+
+      - name: Upload raw HTML samples (parser debugging)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-html
+          path: data/debug/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Commit data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add data/snapshots docs/data.js
+          git diff --cached --quiet || git commit -m "data: $(TZ=Asia/Tokyo date +%F) snapshot"
+          git push
