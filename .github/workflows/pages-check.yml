@@ -1,12 +1,12 @@
 name: pages-check
 
-# GitHub Pages の有効化を試み、公開状態とURLの応答を確認する（手動実行用）
+# GitHub Pages の公開状態とURLの応答を確認する（手動実行用）
 on:
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
+  pages: read
 
 jobs:
   check:
@@ -15,11 +15,6 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Enable Pages (main /docs)
-        continue-on-error: true
-        run: |
-          gh api -X POST "repos/${{ github.repository }}/pages" \
-            -f "source[branch]=main" -f "source[path]=/docs" || true
       - name: Pages status
         run: |
           gh api "repos/${{ github.repository }}/pages" || echo "Pages: not enabled"
