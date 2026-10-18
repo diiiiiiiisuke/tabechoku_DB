@@ -110,3 +110,22 @@ def parse_price(text):
 def is_shipping_included(text):
     t = normalize(text)
     return bool(re.search(r"送料(込|無料|当方負担)", t))
+
+
+_STRAWBERRY_RE = re.compile(r"いちご|イチゴ|苺|ストロベリー|strawberry", re.I)
+_PROCESSED_RE = re.compile(
+    r"ジャム|ドライ|甘酒|ケーキ|みるく|ミルク|ジュース|ソース|大福|アイス|シロップ|スムージー|ピューレ|"
+    r"コンフィチュール|ゼリー|プリン|タルト|パフェ|菓子|スイーツ|酢|ワイン|サイダー|ジェラート|"
+    r"フリーズドライ|パウダー|苗|ドレッシング|チョコ|クッキー|ようかん|羊羹")
+
+
+def classify(title):
+    """商品名から種類を判定する: 生果 / 冷凍 / 加工品 / いちご以外"""
+    t = normalize(title)
+    if not _STRAWBERRY_RE.search(t) and not parse_variety(t):
+        return "いちご以外"
+    if _PROCESSED_RE.search(t):
+        return "加工品"
+    if "冷凍" in t:
+        return "冷凍"
+    return "生果"

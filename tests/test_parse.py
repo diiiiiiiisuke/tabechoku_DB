@@ -1,6 +1,6 @@
 import unittest
 
-from scraper.parse import (is_shipping_included, parse_prefecture, parse_price,
+from scraper.parse import (classify, is_shipping_included, parse_prefecture, parse_price,
                            parse_variety, parse_weight)
 
 
@@ -41,6 +41,12 @@ class ParseMiscTest(unittest.TestCase):
     def test_price(self):
         self.assertEqual(parse_price("3,980円(税込)"), 3980)
         self.assertEqual(parse_price("¥2,480"), 2480)
+
+    def test_classify(self):
+        self.assertEqual(classify("完熟やよいひめ 約400g"), "生果")
+        self.assertEqual(classify("急速冷凍いちご 1kg"), "冷凍")
+        self.assertEqual(classify("いちごの無添加ドライフルーツ 10g×5包"), "加工品")
+        self.assertEqual(classify("超巨大粒 天狼 種なし 1房450g"), "いちご以外")
 
     def test_shipping(self):
         self.assertTrue(is_shipping_included("【送料込】あまおう"))

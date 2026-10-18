@@ -47,6 +47,7 @@
     const [wmin, wmax] = ($("#f-weight").value || "0-1e9").split("-").map(Number);
     return {
       range: Number($("#f-range").value),
+      kind: $("#f-kind").value,
       variety: $("#f-variety").value,
       pref: $("#f-pref").value,
       ship: $("#f-ship").value,
@@ -57,6 +58,7 @@
 
   function filteredProducts(f) {
     return D.products.filter((p) =>
+      (!f.kind || (p.kind || "生果") === f.kind) &&
       (!f.variety || p.variety === f.variety) &&
       (!f.pref || p.prefecture === f.pref) &&
       (f.ship === "" || String(p.ship) === f.ship) &&
@@ -140,6 +142,7 @@
   // ---------- 推移チャート ----------
   function renderTrends(agg) {
     const labels = agg.map((a) => shortDate(a.date));
+    const pr = agg.length < 5 ? 4 : 0; // データが数日分しかない間は点で表示する
     draw("c-ppk", {
       type: "line",
       data: {
@@ -147,7 +150,7 @@
         datasets: [
           { label: "25パーセンタイル", data: agg.map((a) => a.p25), borderWidth: 0, pointRadius: 0, fill: false },
           { label: "25〜75%の幅", data: agg.map((a) => a.p75), borderWidth: 0, pointRadius: 0, backgroundColor: css("--series-1-soft"), fill: "-1" },
-          { label: "中央値", data: agg.map((a) => a.med), borderColor: css("--series-1"), backgroundColor: css("--series-1"), borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: 0.2 },
+          { label: "中央値", data: agg.map((a) => a.med), borderColor: css("--series-1"), backgroundColor: css("--series-1"), borderWidth: 2, pointRadius: pr, pointHoverRadius: 4, tension: 0.2 },
         ],
       },
       options: baseOptions({
@@ -208,6 +211,7 @@
       bands.push({ lo: b * W, hi: (b + 1) * W, mid: (b + 0.5) * W, n: items.length, pace, revenue: pace == null ? null : pace * (b + 0.5) * W });
     }
 
+    const noSales = comparable.every((p) => !p.sales14);
     const minN = comparable.length >= 30 ? 3 : 2;
     let peak = 0, cliff = null;
     for (const band of bands) {
@@ -219,7 +223,8 @@
     const best = eligible.reduce((a, b) => (a && a.revenue >= b.revenue ? a : b), null);
     const ppks = comparable.map((p) => p.ppk14);
     return {
-      scope, n: comparable.length, bands, best, cliff, minN,
+      scope, n: comparable.length, bands, minN, noSales,
+      best: noSales ? null : best, cliff: noSales ? null : cliff,
       p25: quantile(ppks, 0.25), p50: quantile(ppks, 0.5), p75: quantile(ppks, 0.75), ppks,
     };
   }
@@ -239,7 +244,11 @@
         <div class="big">${yen(toPrice(r.best.mid))}</div>
         <div class="sub2">推奨帯 ${yen(toPrice(r.best.lo))}〜${yen(toPrice(r.best.hi))}（${yen(r.best.lo)}〜${yen(r.best.hi)}/kg）</div></div>`);
     }
-    boxes.push(r.cliff
+    if (r.noSales) {
+      boxes.push(`<div class="reco-box main"><div class="label">推奨価格</div><div class="big">データ蓄積中</div>
+        <div class="sub2">販売ペースは前日との差分から推定するため、2日目以降に表示されます。精度が出るのは2〜3週間後です。</div></div>`);
+    }
+    boxes.push(r.noSales ? `<div class="reco-box"><div class="label">売れ行き急落ライン</div><div class="big">データ蓄積中</div><div class="sub2">2日目以降に表示</div></div>` : r.cliff
       ? `<div class="reco-box warn"><div class="label">売れ行き急落ライン</div>
           <div class="big">${yen(toPrice(r.cliff.lo))}</div>
           <div class="sub2">${yen(r.cliff.lo)}/kg を超えると販売ペースが ${Math.round((1 - r.cliff.pace / Math.max(...r.bands.filter((b) => b.lo < r.cliff.lo && b.n >= r.minN).map((b) => b.pace))) * 100)}% 低下</div></div>`
@@ -388,7 +397,7 @@
     const labels = s.map((r) => shortDate(r[0]));
     const line = (label, data, fmt) => ({
       type: "line",
-      data: { labels, datasets: [{ label, data, borderColor: css("--series-1"), backgroundColor: css("--series-1"), borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, stepped: label === "価格" }] },
+      data: { labels, datasets: [{ label, data, borderColor: css("--series-1"), backgroundColor: css("--series-1"), borderWidth: 2, pointRadius: s.length < 5 ? 4 : 0, pointHoverRadius: 4, stepped: label === "価格" }] },
       options: baseOptions({
         plugins: Object.assign(baseOptions().plugins, {
           legend: { display: false },

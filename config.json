@@ -1,6 +1,6 @@
 {
   "search_url": "https://www.tabechoku.com/products/categories/200001?keyword=%E3%81%84%E3%81%A1%E3%81%94",
-  "max_pages": 30,
+  "max_pages": 12,
   "request_interval_sec": 15,
   "user_agent": "Mozilla/5.0 (compatible; strawberry-market-dashboard/1.0)",
   "review_rate": 0.1,

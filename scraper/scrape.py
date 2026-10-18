@@ -20,7 +20,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 import requests
 from bs4 import BeautifulSoup
 
-from scraper.parse import (is_shipping_included, normalize, parse_prefecture, parse_variety,
+from scraper.parse import (classify, is_shipping_included, normalize, parse_prefecture, parse_variety,
                            parse_weight)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,7 +28,7 @@ BASE = "https://www.tabechoku.com"
 JST = timezone(timedelta(hours=9))
 
 FIELDS = [
-    "date", "product_id", "url", "title", "producer", "prefecture", "area", "variety",
+    "date", "product_id", "url", "title", "kind", "producer", "prefecture", "area", "variety",
     "price", "shipping_fee", "shipping_included", "weight_g", "weight_estimated", "price_per_kg",
     "review_count", "rating", "stock", "sold_out", "status", "rank", "image",
 ]
@@ -115,8 +115,9 @@ def parse_card(card, cfg):
         status = ",".join(mods) or _text(stock_el)
     labels = " ".join(_text(el) for el in card.select("figure div"))
     sold_out = bool(re.search(r"sold|soldout|out_of_stock", status, re.I)) or bool(SOLD_OUT_RE.search(labels))
+    # 在庫が少ない商品は c-productStock--5 のように残り数が付く
     stock = None
-    m = re.search(r"残り\s*(\d+)", normalize(labels))
+    m = re.search(r"(?:^|,)(\d+)(?:,|$)", status) or re.search(r"残り\s*(\d+)", normalize(labels))
     if m:
         stock = int(m.group(1))
 
@@ -130,6 +131,7 @@ def parse_card(card, cfg):
         "product_id": pid,
         "url": f"{BASE}/products/{pid}",
         "title": title,
+        "kind": classify(title),
         "producer": producer,
         "prefecture": parse_prefecture(area),
         "area": area,

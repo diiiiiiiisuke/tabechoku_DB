@@ -32,7 +32,7 @@ LIST_HTML = """
 
 <div class="p-productTilingCard js-product-card" data-product-id="247106">
 <a class="p-productTilingCard__productLink" href="/products/247106">
-<figure class="p-productTilingCard__productImg"><div class="c-quickShipLabel">すぐに出荷</div></figure>
+<figure class="p-productTilingCard__productImg"><div class="c-productStock c-productStock--5"></div></figure>
 <h4 class="p-productTilingCard__productName">【送料込】大分県産 ベリーツ 2パック</h4>
 <span class="p-productTilingCard__reviewCount">(30件)</span>
 <p class="p-productTilingCard__price">¥4,599</p>
@@ -72,6 +72,8 @@ class ParseListPageTest(unittest.TestCase):
         self.assertEqual(b["weight_estimated"], 1)
         self.assertEqual(b["prefecture"], "大分県")
         self.assertEqual(b["variety"], "ベリーツ")
+        self.assertEqual(b["stock"], 5)
+        self.assertEqual(b["kind"], "生果")
 
 
 if __name__ == "__main__":

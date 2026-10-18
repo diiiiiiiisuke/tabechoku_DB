@@ -12,9 +12,12 @@ import os
 import statistics
 from datetime import date, datetime, timedelta, timezone
 
+from scraper.parse import classify
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 JST = timezone(timedelta(hours=9))
 SERIES_DAYS = 180
+PPK_RANGE = (300, 30000)
 
 
 def load_config():
@@ -31,6 +34,11 @@ def _num(v, cast=float):
         return None
 
 
+def _sane_ppk(v):
+    """内容量の読み取りミス（例: 10g×5包のドライフルーツ）による極端な円/kgを除外する。"""
+    return v if v is not None and PPK_RANGE[0] <= v <= PPK_RANGE[1] else None
+
+
 def load_snapshots(snap_dir):
     days = {}
     for path in sorted(glob.glob(os.path.join(snap_dir, "*.csv"))):
@@ -40,6 +48,7 @@ def load_snapshots(snap_dir):
             for r in csv.DictReader(f):
                 rows[r["product_id"]] = {
                     "title": r["title"],
+                    "kind": r.get("kind") or classify(r["title"]),
                     "url": r["url"],
                     "producer": r["producer"],
                     "prefecture": r["prefecture"],
@@ -52,10 +61,10 @@ def load_snapshots(snap_dir):
                     "status": r.get("status", ""),
                     "weight": _num(r["weight_g"], int),
                     "west": _num(r["weight_estimated"], int) or 0,
-                    "ppk": _num(r["price_per_kg"], int),
+                    "ppk": _sane_ppk(_num(r["price_per_kg"], int)),
                     "reviews": _num(r["review_count"], int) or 0,
                     "rating": _num(r["rating"]),
-                    "stock": _num(r["stock"], int),
+                    "stock": _num(r["stock"], int) if r["stock"] else _num(r.get("status") if (r.get("status") or "").isdigit() else None, int),
                     "sold_out": _num(r["sold_out"], int) or 0,
                 }
         days[d] = rows
@@ -150,6 +159,7 @@ def build(days, cfg, is_demo):
         products.append({
             "id": pid,
             "title": row["title"],
+            "kind": row["kind"],
             "url": row["url"],
             "producer": row["producer"],
             "prefecture": row["prefecture"],
