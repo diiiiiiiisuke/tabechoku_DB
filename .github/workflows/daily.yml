@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: "47 20 * * *" # 毎日 05:47 JST
   workflow_dispatch:
+    inputs:
+      limit:
+        description: "取得する商品数の上限（0=全件。動作確認用）"
+        default: "0"
 
 permissions:
   contents: write
@@ -35,7 +39,7 @@ jobs:
         run: python -m unittest discover -s tests -t .
 
       - name: Scrape tabechoku
-        run: python -m scraper.scrape --debug-dump --max-minutes 90
+        run: python -m scraper.scrape --debug-dump --max-minutes 90 --limit ${{ inputs.limit || 0 }}
 
       - name: Build dashboard data
         run: python -m scraper.build
