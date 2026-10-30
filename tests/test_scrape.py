@@ -1,6 +1,8 @@
 import unittest
+import tempfile
+from unittest.mock import Mock, patch
 
-from scraper.scrape import parse_list_page
+from scraper.scrape import Fetcher, main, parse_list_page
 
 CFG = {"default_pack_grams": 270, "default_berry_grams": 20}
 
@@ -74,6 +76,41 @@ class ParseListPageTest(unittest.TestCase):
         self.assertEqual(b["variety"], "ベリーツ")
         self.assertEqual(b["stock"], 5)
         self.assertEqual(b["kind"], "生果")
+
+
+class AccessRestrictionTest(unittest.TestCase):
+    def test_blocked_status_is_not_retried(self):
+        for status in (403, 405, 429):
+            with self.subTest(status=status):
+                fetcher = Fetcher({"user_agent": "test", "request_interval_sec": 0})
+                fetcher.session.get = Mock(return_value=Mock(status_code=status))
+                self.assertIsNone(fetcher.get("https://www.tabechoku.com/test"))
+                self.assertTrue(fetcher.blocked)
+                fetcher.session.get.assert_called_once()
+
+    def test_partial_blocked_run_preserves_existing_snapshot(self):
+        from datetime import datetime
+        from pathlib import Path
+        from scraper.scrape import JST
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / f"{datetime.now(JST):%Y-%m-%d}.csv"
+            path.write_text("existing snapshot", encoding="utf-8")
+            fetcher = Mock(blocked=False)
+
+            def get_page(url):
+                if "page=2" in url:
+                    fetcher.blocked = True
+                    return None
+                return LIST_HTML
+
+            fetcher.get.side_effect = get_page
+            with patch("sys.argv", ["scrape", "--out-dir", directory, "--max-pages", "2"]), patch("scraper.scrape.Fetcher", return_value=fetcher):
+                with self.assertRaises(SystemExit) as result:
+                    main()
+            self.assertEqual(result.exception.code, 1)
+            self.assertEqual(path.read_text(encoding="utf-8"), "existing snapshot")
+            self.assertEqual(len(list(Path(directory).iterdir())), 1)
 
 
 if __name__ == "__main__":

@@ -207,7 +207,8 @@ def main():
             break
 
     if fetcher.blocked:
-        print(f"アクセス制限により途中で打ち切りました（{len(rows)} 件取得）", file=sys.stderr)
+        print(f"アクセス制限により途中で打ち切りました（{len(rows)} 件取得）。不完全な日次記録は保存しません。", file=sys.stderr)
+        sys.exit(1)
     if not rows:
         print("商品を1件も取得できませんでした。サイト構造の変更やアクセス制限を確認してください。", file=sys.stderr)
         sys.exit(1)
