@@ -2,7 +2,7 @@ name: daily-scrape
 
 on:
   schedule:
-    - cron: "47 20 * * *" # 毎日 05:47 JST
+    - cron: "0 20 * * *" # 毎日 05:00 JST
   workflow_dispatch:
     inputs:
       max_pages:

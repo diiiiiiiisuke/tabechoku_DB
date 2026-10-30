@@ -63,7 +63,7 @@ scraper/parse.py        内容量（g）・品種・都道府県・価格の抽�
 scraper/build.py        スナップショットを集計して docs/data.js を生成
 scraper/demo.py         デモデータ生成（動作確認用）
 docs/                   ダッシュボード（静的HTML。GitHub Pages で公開可能）
-.github/workflows/daily.yml  毎朝 5:47(JST) に取得→集計→コミット
+.github/workflows/daily.yml  毎朝 5:00(JST) に取得→集計→コミット
 ```
 
 日次スナップショットは CSV なので、Excel でそのまま開いて分析にも使えます。
