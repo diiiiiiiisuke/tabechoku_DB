@@ -32,6 +32,39 @@
   $("#demo-banner").hidden = !D.is_demo;
   $("#manual").innerHTML = D.manual_html || "";
 
+  // 最新の取得状況を確認。開いたままでも新しいデータが公開されたら切り替える。
+  let observedAttempt;
+  async function checkUpdate() {
+    if (D.is_demo) return;
+    const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(new Date());
+    const banner = $("#update-banner");
+    const stale = D.latest_date < today;
+    banner.hidden = !stale;
+    banner.textContent = stale ? `最新データは未取得です。${D.latest_date} のデータを表示しています。毎日5:00（日本時間）に取得を試みます。` : "";
+    try {
+      const response = await fetch(`update-status.json?t=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) return;
+      const status = await response.json();
+      if (status.latest_date && status.latest_date > D.latest_date) {
+        window.location.reload();
+        return;
+      }
+      if (observedAttempt !== undefined && status.last_attempt_at !== observedAttempt) {
+        window.location.reload();
+        return;
+      }
+      observedAttempt = status.last_attempt_at;
+      if (status.outcome === "failure") {
+        banner.hidden = false;
+        const attempted = status.last_attempt_at ? new Date(status.last_attempt_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }) : "";
+        banner.textContent = `最新データの取得に失敗しました（${attempted}）。${D.latest_date} のデータを表示しています。次回は毎日5:00（日本時間）の定期実行で取得を試みます。`;
+      }
+    } catch (_) { /* 通信できない場合もデータ日付による未更新表示を維持する */ }
+  }
+  checkUpdate();
+  setInterval(() => { if (!document.hidden) checkUpdate(); }, 5 * 60 * 1000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
+
   const uniq = (k) => [...new Set(D.products.map((p) => p[k]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ja"));
   for (const [sel, key] of [["#f-variety", "variety"], ["#f-pref", "prefecture"]]) {
     for (const v of uniq(key)) $(sel).insertAdjacentHTML("beforeend", `<option>${esc(v)}</option>`);
@@ -472,3 +505,4 @@
 
   renderAll();
 })();
+
