@@ -151,7 +151,9 @@ def r2(v):
     return None if v is None else round(v, 2)
 
 
-def build(days, cfg, is_demo):
+def build(days, cfg, is_demo, through_date=None):
+    if through_date is not None:
+        days = {d: rows for d, rows in days.items() if d <= through_date}
     dates = sorted(days)
     if not dates:
         raise SystemExit("スナップショットがありません")
@@ -275,6 +277,7 @@ def build(days, cfg, is_demo):
         "generated_at": datetime.now(JST).isoformat(timespec="minutes"),
         "is_demo": is_demo,
         "latest_date": latest_date,
+        "through_date": through_date,
         "config": {
             "review_rate": review_rate,
             "price_band_width": cfg["price_band_width"],
@@ -294,10 +297,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--snapshots", default=os.path.join(ROOT, "data", "snapshots"))
     ap.add_argument("--out", default=os.path.join(ROOT, "docs", "data.js"))
+    ap.add_argument("--through-yesterday", action="store_true", help="日本時間の昨日までの観測データで集計する")
     ap.add_argument("--demo", action="store_true", help="デモデータとして表示する")
     args = ap.parse_args()
 
-    data = build(load_snapshots(args.snapshots), load_config(), args.demo)
+    cutoff = (datetime.now(JST).date() - timedelta(days=1)).isoformat() if args.through_yesterday else None
+    data = build(load_snapshots(args.snapshots), load_config(), args.demo, through_date=cutoff)
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     with open(args.out, "w", encoding="utf-8") as f:
         f.write("window.DASHBOARD_DATA = " + payload + ";\n")
@@ -306,3 +311,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

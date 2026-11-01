@@ -20,3 +20,16 @@ class UpdateStatusTest(unittest.TestCase):
             self.assertEqual(make_status("success", d, now)["outcome"], "failure")
             Path(d, "2026-11-02.csv").write_text("today")
             self.assertEqual(make_status("success", d, now)["outcome"], "success")
+
+
+    def test_partial_and_yesterday_cutoff(self):
+        with tempfile.TemporaryDirectory() as d:
+            for day in ["2026-11-01", "2026-11-02"]:
+                Path(d, day + ".csv").write_text("observed")
+            status = make_status("success", d, datetime(2026, 11, 2, 5, tzinfo=JST),
+                                 report={"outcome": "partial", "completed_pages": 2, "product_count": 80})
+            self.assertEqual(status["outcome"], "partial")
+            self.assertEqual(status["latest_date"], "2026-11-01")
+            self.assertEqual(status["latest_observed_date"], "2026-11-02")
+            self.assertEqual(status["through_date"], "2026-11-01")
+            self.assertEqual(status["product_count"], 80)

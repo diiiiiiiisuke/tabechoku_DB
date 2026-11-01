@@ -50,10 +50,10 @@ jobs:
       - name: Scrape tabechoku
         id: scrape
         continue-on-error: true
-        run: python -m scraper.scrape --debug-dump --max-pages ${{ inputs.max_pages || 0 }}
+        run: python -m scraper.scrape --debug-dump --report data/scrape-result.json --max-pages ${{ inputs.max_pages || 0 }}
 
       - name: Build dashboard data
-        run: python -m scraper.build
+        run: python -m scraper.build --through-yesterday
 
       - name: Upload raw HTML samples (parser debugging)
         if: always()
@@ -90,3 +90,4 @@ jobs:
         run: |
           echo "データ取得に失敗しました。前回のデータと取得状況を公開しました。"
           exit 1
+

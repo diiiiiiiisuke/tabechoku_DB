@@ -88,14 +88,16 @@ class AccessRestrictionTest(unittest.TestCase):
                 self.assertTrue(fetcher.blocked)
                 fetcher.session.get.assert_called_once()
 
-    def test_partial_blocked_run_preserves_existing_snapshot(self):
+    def test_partial_blocked_run_saves_retrieved_pages(self):
+        import csv
+        import json
         from datetime import datetime
         from pathlib import Path
         from scraper.scrape import JST
 
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / f"{datetime.now(JST):%Y-%m-%d}.csv"
-            path.write_text("existing snapshot", encoding="utf-8")
+            report = Path(directory) / "result.json"
             fetcher = Mock(blocked=False)
 
             def get_page(url):
@@ -105,13 +107,35 @@ class AccessRestrictionTest(unittest.TestCase):
                 return LIST_HTML
 
             fetcher.get.side_effect = get_page
-            with patch("sys.argv", ["scrape", "--out-dir", directory, "--max-pages", "2"]), patch("scraper.scrape.Fetcher", return_value=fetcher):
+            with patch("sys.argv", ["scrape", "--out-dir", directory, "--max-pages", "12", "--report", str(report)]), patch("scraper.scrape.Fetcher", return_value=fetcher):
+                main()
+            with path.open(encoding="utf-8-sig") as f:
+                rows = list(csv.DictReader(f))
+            self.assertEqual(len(rows), 2)
+            self.assertEqual({row["date"] for row in rows}, {datetime.now(JST).strftime("%Y-%m-%d")})
+            self.assertEqual(fetcher.get.call_count, 2)
+            status = json.loads(report.read_text())
+            self.assertEqual(status["outcome"], "partial")
+            self.assertEqual(status["completed_pages"], 1)
+            self.assertEqual(status["product_count"], 2)
+
+    def test_zero_rows_preserves_existing_snapshot(self):
+        from datetime import datetime
+        from pathlib import Path
+        from scraper.scrape import JST
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / f"{datetime.now(JST):%Y-%m-%d}.csv"
+            path.write_text("existing snapshot")
+            fetcher = Mock(blocked=True)
+            fetcher.get.return_value = None
+            with patch("sys.argv", ["scrape", "--out-dir", directory]), patch("scraper.scrape.Fetcher", return_value=fetcher):
                 with self.assertRaises(SystemExit) as result:
                     main()
             self.assertEqual(result.exception.code, 1)
-            self.assertEqual(path.read_text(encoding="utf-8"), "existing snapshot")
-            self.assertEqual(len(list(Path(directory).iterdir())), 1)
+            self.assertEqual(path.read_text(), "existing snapshot")
+            self.assertEqual(fetcher.get.call_count, 1)
 
 
 if __name__ == "__main__":
     unittest.main()
+

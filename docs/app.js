@@ -28,42 +28,37 @@
   const charts = {};
 
   // ---------- 初期化 ----------
-  $("#meta").textContent = `データ日付 ${D.latest_date}（日次更新）・生成 ${D.generated_at.replace("T", " ")}`;
+  $("#meta").textContent = `最終観測日 ${D.latest_date}${D.through_date ? `・集計対象 ${D.through_date} まで` : ""}・毎朝5時更新・生成 ${D.generated_at.replace("T", " ")}`;
   $("#demo-banner").hidden = !D.is_demo;
   $("#manual").innerHTML = D.manual_html || "";
 
-  // 最新の取得状況を確認。開いたままでも新しいデータが公開されたら切り替える。
-  let observedAttempt;
+  // ページを開いたときだけ取得範囲・成否を確認する。定期ポーリングは行わない。
   async function checkUpdate() {
     if (D.is_demo) return;
-    const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(new Date());
     const banner = $("#update-banner");
-    const stale = D.latest_date < today;
+    const stale = D.through_date && D.latest_date < D.through_date;
     banner.hidden = !stale;
-    banner.textContent = stale ? `最新データは未取得です。${D.latest_date} のデータを表示しています。毎日5:00（日本時間）に取得を試みます。` : "";
+    banner.textContent = stale ? `${D.through_date} までの集計対象に対し、最終観測日は ${D.latest_date} です。未取得の日は補完していません。` : "";
     try {
-      const response = await fetch(`update-status.json?t=${Date.now()}`, { cache: "no-store" });
+      const response = await fetch("update-status.json", { cache: "no-store" });
       if (!response.ok) return;
       const status = await response.json();
-      if (status.latest_date && status.latest_date > D.latest_date) {
-        window.location.reload();
-        return;
+      const messages = [];
+      if (stale) messages.push(banner.textContent);
+      const attempted = status.last_attempt_at ? new Date(status.last_attempt_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }) : "";
+      if (status.outcome === "partial") {
+        messages.push(`今朝の取得は上位 ${status.completed_pages} ページ・${status.product_count} 件で終了しました（${attempted}）。取得できた範囲だけを保存しました。`);
+      } else if (status.outcome === "failure") {
+        messages.push(`今回の取得は0件でした（${attempted}）。保存済みのデータを維持しています。`);
       }
-      if (observedAttempt !== undefined && status.last_attempt_at !== observedAttempt) {
-        window.location.reload();
-        return;
+      if (status.latest_observed_date && D.through_date && status.latest_observed_date > D.through_date) {
+        messages.push(`${status.latest_observed_date} の観測データは保存済みです。翌朝以降の集計に使用します。`);
       }
-      observedAttempt = status.last_attempt_at;
-      if (status.outcome === "failure") {
-        banner.hidden = false;
-        const attempted = status.last_attempt_at ? new Date(status.last_attempt_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }) : "";
-        banner.textContent = `最新データの取得に失敗しました（${attempted}）。${D.latest_date} のデータを表示しています。次回は毎日5:00（日本時間）の定期実行で取得を試みます。`;
-      }
-    } catch (_) { /* 通信できない場合もデータ日付による未更新表示を維持する */ }
+      banner.hidden = messages.length === 0;
+      banner.textContent = messages.join(" ");
+    } catch (_) { /* 通信できない場合も観測日と集計対象期間を表示する */ }
   }
   checkUpdate();
-  setInterval(() => { if (!document.hidden) checkUpdate(); }, 5 * 60 * 1000);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkUpdate(); });
 
   const uniq = (k) => [...new Set(D.products.map((p) => p[k]).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ja"));
   for (const [sel, key] of [["#f-variety", "variety"], ["#f-pref", "prefecture"]]) {
@@ -505,4 +500,5 @@
 
   renderAll();
 })();
+
 

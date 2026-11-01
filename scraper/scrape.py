@@ -174,6 +174,7 @@ def main():
     ap.add_argument("--out-dir", default=os.path.join(ROOT, "data", "snapshots"))
     ap.add_argument("--max-pages", type=int, default=0, help="取得ページ数の上限（動作確認用）")
     ap.add_argument("--debug-dump", action="store_true")
+    ap.add_argument("--report", help="取得範囲・成否を保存するJSONパス")
     args = ap.parse_args()
 
     cfg = load_config()
@@ -183,12 +184,15 @@ def main():
     max_pages = args.max_pages or cfg["max_pages"]
 
     rows, seen = [], set()
+    completed_pages, interrupted = 0, False
     for page in range(1, max_pages + 1):
         html = fetcher.get(with_page(cfg["search_url"], page))
         if not html:
+            interrupted = True
             break
         if dump_dir and page == 1:
             _dump(dump_dir, "list_page1.html", html)
+        completed_pages += 1
         new = skipped = 0
         for row in parse_list_page(html, cfg):
             if row["product_id"] in seen:
@@ -206,9 +210,15 @@ def main():
         if new == 0:
             break
 
-    if fetcher.blocked:
-        print(f"アクセス制限により途中で打ち切りました（{len(rows)} 件取得）。不完全な日次記録は保存しません。", file=sys.stderr)
-        sys.exit(1)
+    if args.report:
+        os.makedirs(os.path.dirname(os.path.abspath(args.report)), exist_ok=True)
+        with open(args.report, "w", encoding="utf-8") as f:
+            json.dump({"observed_at": datetime.now(JST).isoformat(timespec="seconds"),
+                       "outcome": "failure" if not rows else ("partial" if interrupted else "success"),
+                       "completed_pages": completed_pages, "product_count": len(rows),
+                       "interrupted": interrupted, "access_limited": bool(fetcher.blocked)}, f, ensure_ascii=False)
+    if fetcher.blocked and rows:
+        print(f"アクセス制限によりここで取得を終了します（{len(rows)} 件取得）。取得済みの上位ページを保存します。", file=sys.stderr)
     if not rows:
         print("商品を1件も取得できませんでした。サイト構造の変更やアクセス制限を確認してください。", file=sys.stderr)
         sys.exit(1)
@@ -225,3 +235,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
